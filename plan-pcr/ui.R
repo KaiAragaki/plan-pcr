@@ -8,11 +8,6 @@ ui <- fluidPage(
                   min = 1,
                   max = 7,
                   value = 2),
-      sliderInput("samples",
-                  "Number of Samples:",
-                  min = 1,
-                  max = 13,
-                  value = 1),
       radioButtons("plate_format",
                    "Plate Format:",
                    c("96 Well", "384 Well"),
@@ -37,3 +32,4 @@ ui <- fluidPage(
 # Allow user to supply code to select which samples they want? Security risk?
 # Maybe just allow for a simple click to select?
 
+# Sample number should be extracted from supplied data
