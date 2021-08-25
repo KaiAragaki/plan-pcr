@@ -10,8 +10,7 @@ ui <- fluidPage(
                   value = 2),
       radioButtons("plate_format",
                    "Plate Format:",
-                   c("96 Well", "384 Well"),
-                   "384 Well"),
+                   c("96 Well" = "96_well", "384 Well" = "384_well")),
       radioButtons("exclude_border",
                    "Exclude Plate Border?",
                    c("Yes", "No"),
@@ -22,7 +21,11 @@ ui <- fluidPage(
                      "Download Report")
     ),
     mainPanel(
-      tableOutput("rna_table")
+      tabsetPanel(
+        tabPanel("Sample Preparation", tableOutput("rna_table")),
+        tabPanel("Mastermix Preparation"),
+        tabPanel("Sample Layout", plotOutput("sample_layout"))
+      )
     )
   )
 )
@@ -31,5 +34,3 @@ ui <- fluidPage(
 
 # Allow user to supply code to select which samples they want? Security risk?
 # Maybe just allow for a simple click to select?
-
-# Sample number should be extracted from supplied data
