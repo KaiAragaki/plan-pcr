@@ -9,7 +9,7 @@ ui <- fluidPage(
                   max = 64,
                   value = 2,
                   step = 1, 
-                  width = 200),
+                  width = 250),
       radioButtons("plate_format",
                    "Plate Format:",
                    c("96 Well" = "96_well", "384 Well" = "384_well")),
@@ -18,7 +18,8 @@ ui <- fluidPage(
                    c("Yes" = TRUE, "No" = FALSE), 
                    selected = TRUE),
       fileInput("rna_data",
-                "Upload RNA Concentrations"),
+                "Upload RNA Concentrations",
+                width = 250),
       downloadButton("report",
                      "Download Report")
     ),
