@@ -4,6 +4,45 @@ library(readr)
 
 server <- function(input, output) {
 
+  # Empty plate templates ------------------------------------------------------
+  
+  # Upfront single initialization makes sense, minimal overhead
+
+  make_plate_template <- function(n_row, n_col) {
+    expand_grid(col = 1:n_col,
+                row = letters[1:n_row]) |> 
+      mutate(row = as.factor(row) |> fct_rev(),
+             col = as.factor(col))
+  }
+  
+  empty_plate_96 <- make_plate_template(8, 12)
+  empty_plate_384 <- make_plate_template(16, 24)
+  
+  # No border plates:
+  empty_plate_96_nb <- empty_plate_96 |> 
+    filter(!(col %in% c(1, 12) | row %in% c("a", "h"))) |> 
+    mutate(across(everything(), fct_drop))
+  empty_plate_384_nb <- empty_plate_384 |> 
+    filter(!(col %in% c(1, 24) | row %in% c("a", "p"))) |> 
+    mutate(across(everything(), fct_drop))
+  
+  # A 'lane' is a tract of wells that will encompass our replicates (three wide,
+  # extending down the plate)
+  make_lanes <- function(plate) {
+    num_lanes <- length(levels(plate$col)) %/% 3
+    num_rows <- length(levels(plate$row))
+    lane <- rep(paste0("lane_", 1:num_lanes), each = num_rows * 3)
+    length(lane) <- nrow(plate)
+    plate$lane <- lane
+  }
+  
+  
+  
+  
+  
+  
+  # Experimental constants -----------------------------------------------------
+  
   # Final RNA concentration, determined by protocol
   final_rna_conc <- 5#ng/uL
   
@@ -18,7 +57,8 @@ server <- function(input, output) {
   
   # Final RNA volume per sample
   final_vol <- reactive({
-    ((input$primers * replicates) + safety_replicates) * rna_per_well
+    x <- ((input$primers * replicates) + safety_replicates) * rna_per_well
+    as.integer(x)
   })
   
   # Read in data
@@ -41,7 +81,7 @@ server <- function(input, output) {
     } else {
       best_factor <- 1
     }
-    best_factor
+    as.integer(best_factor)
   }
   
   rna_dil_factor <- reactive({
@@ -61,6 +101,22 @@ server <- function(input, output) {
              water_to_add = final_vol - diluted_rna_to_add)
   })
   
+  # Format wells, then bind samples on the side
+  # Might not be the best choice in terms of reactivity...
+  # Do this as a working model then make it sexy later
+  
+  
+  format_wells <- function(plate_structure) {
+    if(input$exclude_border) {
+      
+    }
+  }
+  
+  format_samples <- function(sample_table) {
+    
+  }
+  
+  
   
   output$rna_table <- renderTable({
     rna_table()
@@ -68,17 +124,10 @@ server <- function(input, output) {
   
   output$sample_layout <- renderPlot({
     if(input$plate_format == "96_well") {
-      plate_rows <- 8
-      plate_cols <- 12
-      size <- 16
-    } else if(input$plate_format == "384_well") {
-      plate_rows <- 16
-      plate_cols <- 24
-      size <- 8
+      empty_plate <- empty_plate_96
+    } else {
+      empty_plate <- empty_plate_384
     }
-    empty_plate <- expand_grid(row = letters[1:plate_rows], col = 1:plate_cols) |> 
-      mutate(row = as.factor(row) |> fct_rev(),
-             col = as.factor(col))
     ggplot(empty_plate, aes(x = col, y = row)) + geom_point(size = size)
   }, width = 600)
   # Should eventually find a way to preserve given names in df

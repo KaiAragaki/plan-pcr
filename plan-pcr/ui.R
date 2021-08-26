@@ -13,7 +13,7 @@ ui <- fluidPage(
                    c("96 Well" = "96_well", "384 Well" = "384_well")),
       radioButtons("exclude_border",
                    "Exclude Plate Border?",
-                   c("Yes", "No"),
+                   c("Yes" = TRUE, "No" = FALSE),
                    "Yes"),
       fileInput("rna_data",
                 "Upload RNA Concentrations"),
