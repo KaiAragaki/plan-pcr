@@ -17,35 +17,53 @@ server <- function(input, output) {
   rna_per_well <- 2#uL
   
   # Final RNA volume per sample
-  final_rna_vol <- function(num_primers) {
-    ((num_primers * replicates) + safety_replicates) * rna_per_well
-  }
+  final_vol <- reactive({
+    ((input$primers * replicates) + safety_replicates) * rna_per_well
+  })
   
-  rna_dil_factor <- function(initial_rna_conc, num_primers) {
-    vol_to_add <- final_rna_conc*final_rna_vol(num_primers)/initial_rna_conc
-    best_factor <- 1
+  # Read in data
+  rna <- reactive({
+    req(input$rna_data)
+    x <- read_tsv(input$rna_data$datapath, show_col_types = FALSE)
+    if(ncol(x) == 1) {
+      x <- x |> 
+        mutate(names = paste0("Sample ", 1:nrow(x))) |> 
+        relocate(names)
+    }
+    x |> 
+      setNames(c("names", "conc"))
+  })
+  
+  get_best_factor <- function(vol_to_add) {
     if (vol_to_add < 1) {
-      exact_factor <- 1/vol_to_add
-      best_factor <- ceiling(exact_factor/5)*5 # Give something divisible by 5
+      exact_factor <- 1 / vol_to_add
+      best_factor <- ceiling(exact_factor/5) * 5 # Give something divisible by 5
+    } else {
+      best_factor <- 1
     }
     best_factor
   }
   
-  output$rna_table <- renderTable({
-    rna <- read_tsv(input$rna_data$datapath, show_col_types = FALSE)
-    if(ncol(rna) == 1) {
-      rna <- rna |> 
-        mutate(names = paste0("Sample ", 1:nrow(rna))) |> 
-        relocate(names)
-    }
-    rna |> 
-      setNames(c("names", "conc")) |> 
+  rna_dil_factor <- reactive({
+    x <- rna() |> 
       rowwise() |> 
-      mutate(dilution_factor = rna_dil_factor(conc, input$primers),
+      mutate(vol_to_add = final_rna_conc * final_vol() / conc,
+             dilution_factor = get_best_factor(vol_to_add))
+    x$dilution_factor
+  })
+
+  rna_table <- reactive({
+    rna() |> 
+      mutate(dilution_factor = rna_dil_factor(),
              diluted_concentration = conc/dilution_factor,
-             final_vol = final_rna_vol(input$primers),
+             final_vol = final_vol(),
              diluted_rna_to_add = final_rna_conc * final_vol / diluted_concentration,
              water_to_add = final_vol - diluted_rna_to_add)
+  })
+  
+  
+  output$rna_table <- renderTable({
+    rna_table()
   })
   
   output$sample_layout <- renderPlot({
@@ -68,14 +86,9 @@ server <- function(input, output) {
   # Might be as simple/rudimentary as just caching the names and resetting them
   # at the end
   
-  # Should delay render table until input
-  
   # Primer name input too
   # Be easy with primer naming. If too many primer names supplied, trim off the end
   # If too few, fill out the rest with dummy names.
-  
-  # Should probably calculate final_rna_vol once (only when input$primers
-  # changes) and then supply that elsewhere
   
   # Num of max primers set too low. Should depend on num samples.
   
