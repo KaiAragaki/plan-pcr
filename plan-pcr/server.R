@@ -4,10 +4,11 @@ library(readr)
 
 server <- function(input, output) {
 
-  # Empty plate templates ------------------------------------------------------
+  # Plate Templating -----------------------------------------------------------
   
+  
+  ## Empty plate templates -----------------------------------------------------
   # Upfront single initialization makes sense, minimal overhead
-
   make_plate_template <- function(n_row, n_col) {
     expand_grid(col = 1:n_col,
                 row = letters[1:n_row]) |> 
@@ -18,7 +19,7 @@ server <- function(input, output) {
   empty_plate_96 <- make_plate_template(8, 12)
   empty_plate_384 <- make_plate_template(16, 24)
   
-  # No border plates:
+  ### No border plates ---------------------------------------------------------
   empty_plate_96_nb <- empty_plate_96 |> 
     filter(!(col %in% c(1, 12) | row %in% c("a", "h"))) |> 
     mutate(across(everything(), fct_drop))
@@ -26,22 +27,55 @@ server <- function(input, output) {
     filter(!(col %in% c(1, 24) | row %in% c("a", "p"))) |> 
     mutate(across(everything(), fct_drop))
   
-  # A 'lane' is a tract of wells that will encompass our replicates (three wide,
-  # extending down the plate)
-  make_lanes <- function(plate) {
-    num_lanes <- length(levels(plate$col)) %/% 3
-    num_rows <- length(levels(plate$row))
-    lane <- rep(paste0("lane_", 1:num_lanes), each = num_rows * 3)
+  # Lanes are horizontal and vertical tracts of wells that (in combination) form
+  # a checkerboard pattern that outlines where primers and samples will go
+  
+  # Vertical lanes are experiment independent and can be made outright
+  make_lanes_v <- function(plate) {
+    num_lanes <- length(levels(plate$col)) %/% replicates
+    wells_per_lane <- length(levels(plate$row)) * replicates
+    lane <- rep(1:num_lanes, each = wells_per_lane) |> 
+      as.factor()
     length(lane) <- nrow(plate)
-    plate$lane <- lane
+    plate <- arrange(plate, col, desc(row))
+    plate$lane_v <- lane
+    plate
   }
   
-  
+  # Horizontal lanes depend on the number of samples and need to be calculated after user input.
+  make_lanes_h <- function(plate) {
+    num_lanes <- length(levels(plate$row)) %/% (n_samples() + ntc)
+    if (num_lanes < 1){
+      # do stuff
+    } else {
+      wells_per_lane <- length(levels(plate$col)) * (n_samples() + ntc)
+      lane <- rep(1:num_lanes, each = wells_per_lane) |> 
+        as.factor()
+      length(lane) <- nrow(plate)
+      plate <- arrange(plate, desc(row), col)
+      plate$lane_h <- lane
+    }
+    plate
+  }
+    
+    # Some instances that may be a problem:
+    # - One primer, samples > nrow plate
+    ## - Fairly simple solution - catch if n_samples > nrow plate and allow for wrapping
+    ## Since it won't be tidy regardless, we can just wrap it all the way (no need to shift over after one primer has finished)
+    # - many (> ncol_plate %/% 3) primers, all over 0.5 * nrow_plate but  < nrow_plate.
+    ## More complex to catch, need to make a design decision to figure out what to do.
+    ## In real life I would do the first (<= ncol_plate %/% 3) primers normally, then I would wrap the last one.
+    # Many, many primers with only one or two samples
+    ## Honestly this can probably just follow the same strategy as above: Move laterally until you can't anymore, then wrap the bottom ones.
+
   
   
   
   
   # Experimental constants -----------------------------------------------------
+  
+  # Non-targeting control - add one to samples
+  ntc <- 1
   
   # Final RNA concentration, determined by protocol
   final_rna_conc <- 5#ng/uL
@@ -101,6 +135,10 @@ server <- function(input, output) {
              water_to_add = final_vol - diluted_rna_to_add)
   })
   
+  n_samples <- reactive({
+    nrow(rna_table())
+  })
+  
   # Format wells, then bind samples on the side
   # Might not be the best choice in terms of reactivity...
   # Do this as a working model then make it sexy later
@@ -124,11 +162,30 @@ server <- function(input, output) {
   
   output$sample_layout <- renderPlot({
     if(input$plate_format == "96_well") {
-      empty_plate <- empty_plate_96
+      plate <- empty_plate_96 |> 
+        make_lanes_h() |> 
+        make_lanes_v() |> 
+        arrange(lane_h, lane_v) |> 
+        rowwise() |> 
+        mutate(section = if_else(is.na(lane_h) || is.na(lane_v), NA_character_, paste0(lane_h, ", ", lane_v))) |> 
+        group_by(section) |> 
+        mutate(id = cur_group_id(),
+               section = if_else(id > input$primers, NA_character_, section))
+        
+      size = 16
+      
     } else {
-      empty_plate <- empty_plate_384
+      plate <- empty_plate_384 |> 
+        make_lanes_h() |> 
+        make_lanes_v() |> 
+        rowwise() |> 
+        mutate(section = if_else(is.na(lane_h) || is.na(lane_v), NA_character_, paste0(lane_h, ", ", lane_v))) |> 
+        group_by(section) |> 
+        mutate(id = cur_group_id(),
+               section = if_else(id > input$primers, NA_character_, section))
+      size = 8
     }
-    ggplot(empty_plate, aes(x = col, y = row)) + geom_point(size = size)
+    ggplot(plate, aes(x = col, y = row, color = section)) + geom_point(size = size) + theme(legend.position = "none")
   }, width = 600)
   # Should eventually find a way to preserve given names in df
   
@@ -143,5 +200,6 @@ server <- function(input, output) {
   
   # Num of max primers should dep on whether border is excluded or not.
   
+  # Error if too many samples * primers for plate selected
   
 }
