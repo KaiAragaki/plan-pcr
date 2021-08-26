@@ -6,57 +6,89 @@ server <- function(input, output) {
 
   # Plate Templating -----------------------------------------------------------
   
-  
-  ## Empty plate templates -----------------------------------------------------
+  ## Plate templates -----------------------------------------------------------
   # Upfront single initialization makes sense, minimal overhead
-  make_plate_template <- function(n_row, n_col) {
+  
+  plate_template <- function(n_row, n_col) {
     expand_grid(col = 1:n_col,
                 row = letters[1:n_row]) |> 
       mutate(row = as.factor(row) |> fct_rev(),
              col = as.factor(col))
   }
   
-  empty_plate_96 <- make_plate_template(8, 12)
-  empty_plate_384 <- make_plate_template(16, 24)
+  plate_96 <- plate_template(8, 12)
+  plate_384 <- plate_template(16, 24)
   
-  ### No border plates ---------------------------------------------------------
-  empty_plate_96_nb <- empty_plate_96 |> 
+  
+  ## Borderless plates ---------------------------------------------------------
+  
+  plate_96_nb <- plate_96 |> 
     filter(!(col %in% c(1, 12) | row %in% c("a", "h"))) |> 
     mutate(across(everything(), fct_drop))
-  empty_plate_384_nb <- empty_plate_384 |> 
+  plate_384_nb <- plate_384 |> 
     filter(!(col %in% c(1, 24) | row %in% c("a", "p"))) |> 
     mutate(across(everything(), fct_drop))
+
+  plate_init <- reactive({
+    if (input$plate_format == "96_well") {
+      if(input$exclude_border) plate_96_nb else plate_96
+    } else {
+      if(input$exclude_border) plate_384_nb else plate_384
+    }
+  }) 
   
-  # Lanes are horizontal and vertical tracts of wells that (in combination) form
-  # a checkerboard pattern that outlines where primers and samples will go
   
-  # Vertical lanes are experiment independent and can be made outright
-  make_lanes_v <- function(plate) {
-    num_lanes <- length(levels(plate$col)) %/% replicates
-    wells_per_lane <- length(levels(plate$row)) * replicates
+  ## Make lanes ---------------------------------------------------------------- 
+  # Lanes are horizontal and vertical tracts of wells that (in combination)
+  # form a checkerboard pattern that outlines where primers and samples will
+  # go
+
+  n_plate_cols <- reactive({
+    plate <- plate_init()
+    length(levels(plate$col))
+  })
+  
+  n_plate_rows <- reactive({
+    plate <- plate_init()
+    length(levels(plate$row))
+  })
+  
+  # Vertical lanes. Only depends on plate type (+ border status)
+  plate_vlane <- reactive({
+    num_lanes <- n_plate_cols() %/% replicates
+    wells_per_lane <- n_plate_rows() * replicates
     lane <- rep(1:num_lanes, each = wells_per_lane) |> 
       as.factor()
-    length(lane) <- nrow(plate)
-    plate <- arrange(plate, col, desc(row))
+    length(lane) <- nrow(plate_init())
+    plate <- arrange(plate_init(), col, desc(row))
     plate$lane_v <- lane
     plate
-  }
-  
-  # Horizontal lanes depend on the number of samples and need to be calculated after user input.
-  make_lanes_h <- function(plate) {
-    num_lanes <- length(levels(plate$row)) %/% (n_samples() + ntc)
+  })
+
+  # Horizontal lanes depend on the number of samples and need to be calculated
+  # after user input.
+  plate <- reactive({
+    num_lanes <- n_plate_rows() %/% (n_samples() + ntc)
+    print(plate_init())
+    print(num_lanes)
     if (num_lanes < 1){
-      # do stuff
+      stop("oops")
     } else {
-      wells_per_lane <- length(levels(plate$col)) * (n_samples() + ntc)
+      wells_per_lane <- n_plate_cols() * (n_samples() + ntc)
       lane <- rep(1:num_lanes, each = wells_per_lane) |> 
         as.factor()
-      length(lane) <- nrow(plate)
-      plate <- arrange(plate, desc(row), col)
+      length(lane) <- nrow(plate_vlane())
+      plate <- arrange(plate_vlane(), desc(row), col)
       plate$lane_h <- lane
     }
     plate
-  }
+  })
+  
+  check_possible <- reactive({
+    
+  })
+  
+
     
     # Some instances that may be a problem:
     # - One primer, samples > nrow plate
@@ -162,31 +194,31 @@ server <- function(input, output) {
   
   output$sample_layout <- renderPlot({
     if(input$plate_format == "96_well") {
-      plate <- empty_plate_96 |> 
-        make_lanes_h() |> 
-        make_lanes_v() |> 
-        arrange(lane_h, lane_v) |> 
-        rowwise() |> 
-        mutate(section = if_else(is.na(lane_h) || is.na(lane_v), NA_character_, paste0(lane_h, ", ", lane_v))) |> 
-        group_by(section) |> 
-        mutate(id = cur_group_id(),
-               section = if_else(id > input$primers, NA_character_, section))
-        
+      full_plate <- plate_96
       size = 16
-      
     } else {
-      plate <- empty_plate_384 |> 
-        make_lanes_h() |> 
-        make_lanes_v() |> 
-        rowwise() |> 
-        mutate(section = if_else(is.na(lane_h) || is.na(lane_v), NA_character_, paste0(lane_h, ", ", lane_v))) |> 
-        group_by(section) |> 
-        mutate(id = cur_group_id(),
-               section = if_else(id > input$primers, NA_character_, section))
+      full_plate <- plate_384
       size = 8
     }
+    plate <- plate() |> 
+      arrange(lane_h, lane_v) |> 
+      rowwise() |> 
+      mutate(section = if_else(is.na(lane_h) || is.na(lane_v), NA_character_, paste0(lane_h, ", ", lane_v))) |> 
+      group_by(section) |> 
+      mutate(id = cur_group_id(),
+             section = if_else(id > input$primers, NA_character_, section))
+    
+    if(input$exclude_border) {
+      plate <- left_join(full_plate, plate)
+    }
+    
     ggplot(plate, aes(x = col, y = row, color = section)) + geom_point(size = size) + theme(legend.position = "none")
   }, width = 600)
+  
+  # Need to find a way to preserve plate structure but still plot without border
+  ## Might be as simple as dropping the first and last factors of row and col
+  ## You'd have to catch to make sure you weren't putting samples in the 'forbidden NA zone' though
+  
   # Should eventually find a way to preserve given names in df
   
   # Might be as simple/rudimentary as just caching the names and resetting them
@@ -196,9 +228,9 @@ server <- function(input, output) {
   # Be easy with primer naming. If too many primer names supplied, trim off the end
   # If too few, fill out the rest with dummy names.
   
-  # Num of max primers set too low. Should depend on num samples.
-  
-  # Num of max primers should dep on whether border is excluded or not.
+  # Need catch for too many primers (should be in lanes_v or plotting, not sure.
+  # Probably plotting though, lanes_v fills out as many as possible and then
+  # stops)
   
   # Error if too many samples * primers for plate selected
   
