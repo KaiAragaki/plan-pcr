@@ -7,7 +7,7 @@ ui <- fluidPage(
                   "Number of Primers:",
                   min = 1,
                   max = 64,
-                  value = 10,
+                  value = 2,
                   step = 1, 
                   width = 250),
       radioButtons("plate_format",

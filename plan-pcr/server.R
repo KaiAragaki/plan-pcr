@@ -67,11 +67,14 @@ server <- function(input, output) {
   # form a checkerboard pattern that outlines where primers and samples will
   # go
   
+  # If needed, the 'grid structure' will be abandoned in favor of a
+  # top-to-bottom, left-to-right filling of wells. This will be employed if
+  # using this method can fit more primers.
+  
   should_flow <- reactive({
     input$primers > max_sections_before_flow()
   }) 
   
-
   
   ### Vertical lanes -----------------------------------------------------------
   # Vertical lanes only depends on plate type (+ border status)
@@ -84,6 +87,7 @@ server <- function(input, output) {
       mutate(lane_v = lane)
   })
   
+  
   ### Flowing lanes ------------------------------------------------------------
   plate_flow <- reactive({
     if(input$plate_format == "96_well") {
@@ -92,14 +96,21 @@ server <- function(input, output) {
       full_plate <- plate_384
     }
     primer <- rep(1:input$primers, each = (n_samples() + ntc) * reps)
+    sample_names <- c(rna()$names, "NTC")
+    blanks <- rep(NA, times = n_samples() + ntc)
+    sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
     length(primer) <- nrow(plate_vlane())
+    length(sample) <- nrow(plate_vlane())
     plate <- arrange(plate_vlane(), lane_v, desc(row)) |> 
       mutate(primer = primer) |> 
       mutate(primer = if_else(primer > input$primers, NA_character_, as.character(primer)),
              available_well = TRUE) |>
-      right_join(full_plate)
+      arrange(primer) |> 
+      mutate(sample = sample) |> 
+      right_join(full_plate, by = c("col", "row"))
     plate
   })
+  
   
   ### Horizontal lanes ---------------------------------------------------------
   # Horizontal lanes depend on the number of samples and need to be calculated
@@ -113,6 +124,7 @@ server <- function(input, output) {
       mutate(lane_h = lane)
   })
   
+  
   ## Make sections -------------------------------------------------------------
   # Sections are the checkerboard-like patterns made by the grid of lanes
   plate_section <- reactive({
@@ -121,6 +133,10 @@ server <- function(input, output) {
     } else {
       full_plate <- plate_384
     }
+    sample_names <- c(rna()$names, "NTC")
+    blanks <- rep(NA, times = n_samples() + ntc)
+    sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
+    length(sample) <- nrow(plate_vlane())
     plate_hlane() |> 
       arrange(lane_h, lane_v) |> 
       rowwise() |> 
@@ -129,9 +145,12 @@ server <- function(input, output) {
                               paste0(lane_h, ", ", lane_v))) |> 
       group_by(primer) |> 
       mutate(primer = if_else(cur_group_id() > input$primers, NA_character_, as.character(cur_group_id())),
-             available_well = TRUE) |> 
-      right_join(full_plate)
+             available_well = TRUE) |>
+      ungroup() |> 
+      mutate(sample = sample) |> 
+      right_join(full_plate, by = c("col", "row"))
   })
+  
   
   # Read in Data ---------------------------------------------------------------
   rna <- reactive({
@@ -152,6 +171,7 @@ server <- function(input, output) {
   n_samples <- reactive({
     nrow(rna())
   })
+  
   
   ## Get (useable) dimension of plate ------------------------------------------
   # If the border is excluded, it will not be counted
@@ -195,7 +215,7 @@ server <- function(input, output) {
   
   # Checks ---------------------------------------------------------------------
   
-  ## Current layout exceeds max # sections ----------------------------
+  ## Current layout exceeds max # sections -------------------------------------
   is_over <- reactive({
     if(max_sections_theoretical() < input$primers) {
       stop("This experiment requires too many wells.")
@@ -244,21 +264,20 @@ server <- function(input, output) {
     is_over()
     if(input$plate_format == "96_well") {
       full_plate <- plate_96
-      size = 16
+      size = 24
     } else {
       full_plate <- plate_384
-      size = 8
+      size = 12
     }
     
     plate <- if(should_flow()) plate_flow() else plate_section()
     
-    ggplot(plate, aes(x = col, y = row, color = primer)) + geom_point(size = size) + theme(legend.position = "none")
-  }, width = 600)
-  
-  # Need to find a way to preserve plate structure but still plot without border
-  ## Might be as simple as dropping the first and last factors of row and col
-  ## You'd have to catch to make sure you weren't putting samples in the 'forbidden NA zone' though
-  
+    ggplot(plate, aes(x = col, y = row, color = primer, label = sample)) + 
+      geom_point(size = size) + 
+      geom_text(color = "black", size = 8) +
+      theme(legend.position = "none", plot.background = element_blank())
+  }, width = 800, height = 500) 
+
   # Should eventually find a way to preserve given names in df
   
   # Might be as simple/rudimentary as just caching the names and resetting them
@@ -269,11 +288,8 @@ server <- function(input, output) {
   # If too few, fill out the rest with dummy names.
 
   # Weird one that works but shouldn't:
-  
   # 1 sample (2 with ntc), 10 primers, 96 well, no border
   
   # Clean up code after going through all that drama
-  
-  # Need to be better about not evaling when there isn't a datapoint
-  
+
 }
