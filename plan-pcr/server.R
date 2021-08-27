@@ -99,14 +99,17 @@ server <- function(input, output) {
     sample_names <- c(rna()$names, "NTC")
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
+    sample_color <- rep(sample_names, each = 3) |> rep(times = input$primers)
     length(primer) <- nrow(plate_vlane())
     length(sample) <- nrow(plate_vlane())
+    length(sample_color) <- nrow(plate_vlane())
     plate <- arrange(plate_vlane(), lane_v, desc(row)) |> 
       mutate(primer = primer) |> 
       mutate(primer = if_else(primer > input$primers, NA_character_, as.character(primer)),
              available_well = TRUE) |>
       arrange(primer) |> 
-      mutate(sample = sample) |> 
+      mutate(sample = sample,
+             sample_color = sample_color) |> 
       right_join(full_plate, by = c("col", "row"))
     plate
   })
@@ -136,7 +139,9 @@ server <- function(input, output) {
     sample_names <- c(rna()$names, "NTC")
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
+    sample_color <- rep(sample_names, each = 3) |> rep(times = input$primers)
     length(sample) <- nrow(plate_vlane())
+    length(sample_color) <- nrow(plate_vlane())
     plate_hlane() |> 
       arrange(lane_h, lane_v) |> 
       rowwise() |> 
@@ -147,7 +152,8 @@ server <- function(input, output) {
       mutate(primer = if_else(cur_group_id() > input$primers, NA_character_, as.character(cur_group_id())),
              available_well = TRUE) |>
       ungroup() |> 
-      mutate(sample = sample) |> 
+      mutate(sample = sample, 
+             sample_color = sample_color) |> 
       right_join(full_plate, by = c("col", "row"))
   })
   
@@ -165,6 +171,12 @@ server <- function(input, output) {
       setNames(c("names", "conc"))
   })
   
+  
+  # Mastermix Calculation ------------------------------------------------------
+  mm <- reactive({
+    tibble(reagent = c("2X RT-PCR Buffer", "Primer", "25X Enzyme Mix", "Nuclease Free H2O"),
+           vol = c(6.25, .625, .5, 3.125) * (n_samples() + ntc + 2) * reps)
+  })
   
   # Data Accessors -------------------------------------------------------------
   ## Get number of samples -----------------------------------------------------
@@ -257,8 +269,8 @@ server <- function(input, output) {
     rna_table()
   })
   
-  # Make Sample Layout ---------------------------------------------------------
-  output$sample_layout <- renderPlot({
+  # Make Mastermix Layout ------------------------------------------------------
+  output$mm_layout <- renderPlot({
     req(input$rna_data)
     req(input$primers)
     is_over()
@@ -274,10 +286,36 @@ server <- function(input, output) {
     
     ggplot(plate, aes(x = col, y = row, color = primer, label = sample)) + 
       geom_point(size = size) + 
+      theme(legend.position = "none", plot.background = element_blank())
+  }, width = 800, height = 500)
+  
+  
+  # Make Sample Layout ---------------------------------------------------------
+  output$sample_layout <- renderPlot({
+    req(input$rna_data)
+    req(input$primers)
+    is_over()
+    if(input$plate_format == "96_well") {
+      full_plate <- plate_96
+      size = 24
+    } else {
+      full_plate <- plate_384
+      size = 12
+    }
+    
+    plate <- if(should_flow()) plate_flow() else plate_section()
+    
+    ggplot(plate, aes(x = col, y = row, color = sample_color, label = sample)) + 
+      geom_point(size = size) + 
       geom_text(color = "black", size = 8) +
       theme(legend.position = "none", plot.background = element_blank())
   }, width = 800, height = 500) 
-
+  
+  # Make Mastermix Preparation Table -------------------------------------------
+  output$mm_prep <- renderTable(
+    mm()
+  )
+  
   # Should eventually find a way to preserve given names in df
   
   # Might be as simple/rudimentary as just caching the names and resetting them
@@ -286,10 +324,21 @@ server <- function(input, output) {
   # Primer name input too
   # Be easy with primer naming. If too many primer names supplied, trim off the end
   # If too few, fill out the rest with dummy names.
-
+  
   # Weird one that works but shouldn't:
   # 1 sample (2 with ntc), 10 primers, 96 well, no border
   
   # Clean up code after going through all that drama
-
+  
+  # Truncate sample names that are too long for plot (stringr)
+  
+  # Cycle through color limited distinct colors
+  
+  # Integration with Plate? Allow for a late with specific layers to be loaded in, autocalculation?
+  
+  # Give primers names like samples
+  
+  # Odd sample-exclusive error:
+  # 2 samples (3 w ntc), 384, no plate border, >=10primers
+  
 }

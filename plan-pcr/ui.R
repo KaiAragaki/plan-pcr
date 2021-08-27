@@ -26,7 +26,8 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         tabPanel("Sample Preparation", tableOutput("rna_table")),
-        tabPanel("Mastermix Preparation"),
+        tabPanel("Mastermix Preparation", tableOutput("mm_prep")),
+        tabPanel("Mastermix Layout", plotOutput("mm_layout")),
         tabPanel("Sample Layout", plotOutput("sample_layout"))
       )
     )
