@@ -224,6 +224,7 @@ server <- function(input, output) {
   
   # Make RNA Table -------------------------------------------------------------
   rna_table <- reactive({
+    req(input$primers)
     rna() |> 
       mutate(dilution_factor = rna_dil_factor(),
              diluted_concentration = conc/dilution_factor,
