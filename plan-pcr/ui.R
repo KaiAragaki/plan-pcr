@@ -1,4 +1,5 @@
 ui <- fluidPage(
+  shinyFeedback::useShinyFeedback(),
   titlePanel("PCR Experiment Planning"),
   
   sidebarLayout(

@@ -72,6 +72,7 @@ server <- function(input, output) {
     pn <- paste("Primer", 1:input$primers)
     if (input$primer_names != "") {
       user_names <- unlist(strsplit(input$primer_names, split = "; ", ))
+      user_names <- user_names[1:input$primers]
       pn[1:length(user_names)] <- user_names
     }
     pn 
@@ -253,10 +254,16 @@ server <- function(input, output) {
   
   # Checks ---------------------------------------------------------------------
   
+  ## User should include control
+  
+  has_control <- observeEvent(input$primers, {
+    shinyFeedback::feedbackWarning("primers", input$primers == 1, "Ensure you include an endogenous control, like GAPDH.")
+  })
+  
   ## Current layout exceeds max # sections -------------------------------------
   is_over <- reactive({
     if(max_sections_theoretical() < input$primers) {
-      stop("This experiment requires too many wells.")
+      validate("This experiment requires too many wells.")
     }
   })
   
@@ -347,10 +354,7 @@ server <- function(input, output) {
   
   # Might be as simple/rudimentary as just caching the names and resetting them
   # at the end
-  
-  
-  # If too many primer names supplied, trim off the end
-  
+
   
   # Clean up code after going through all that drama
   
