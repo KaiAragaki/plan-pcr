@@ -62,6 +62,17 @@ server <- function(input, output) {
   })
   
   
+  # Primer Names ---------------------------------------------------------------
+  
+  primer_names <- reactive({
+    pn <- paste("Primer", 1:input$primers)
+    if (input$primer_names != "") {
+      user_names <- unlist(strsplit(input$primer_names, split = "; ", ))
+      pn[1:length(user_names)] <- user_names
+    }
+    pn 
+  })
+  
   ## Make lanes ---------------------------------------------------------------- 
   # Lanes are horizontal and vertical tracts of wells that (in combination)
   # form a checkerboard pattern that outlines where primers and samples will
@@ -69,7 +80,8 @@ server <- function(input, output) {
   
   # If needed, the 'grid structure' will be abandoned in favor of a
   # top-to-bottom, left-to-right filling of wells. This will be employed if
-  # using this method can fit more primers.
+  # using this method can fit more primers, and if more primers are needed to be
+  # fit.
   
   should_flow <- reactive({
     input$primers > max_sections_before_flow()
@@ -96,16 +108,20 @@ server <- function(input, output) {
       full_plate <- plate_384
     }
     primer <- rep(1:input$primers, each = (n_samples() + ntc) * reps)
+    primer_names <- rbind(NA, primer_names(), matrix(nrow = (n_samples() + ntc) * reps - 2, ncol = input$primers)) |> c()
     sample_names <- c(rna()$names, "NTC")
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
     sample_color <- rep(sample_names, each = 3) |> c() |>  rep(times = input$primers)
     length(primer) <- nrow(plate_vlane())
+    length(primer_names) <- nrow(plate_vlane())
     length(sample) <- nrow(plate_vlane())
     length(sample_color) <- nrow(plate_vlane())
     plate <- arrange(plate_vlane(), lane_v, desc(row)) |> 
-      mutate(primer = primer) |> 
+      mutate(primer = primer,
+             primer_name = primer_names) |> 
       mutate(primer = if_else(primer > input$primers, NA_character_, as.character(primer)),
+             primer_name = if_else(is.na(primer), NA_character_, primer_name),
              available_well = TRUE) |>
       arrange(primer) |> 
       mutate(sample = sample,
@@ -136,6 +152,7 @@ server <- function(input, output) {
     } else {
       full_plate <- plate_384
     }
+    primer_names <- primer_names()
     sample_names <- c(rna()$names, "NTC")
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
@@ -151,7 +168,16 @@ server <- function(input, output) {
       group_by(primer) |> 
       mutate(primer = if_else(cur_group_id() > input$primers, NA_character_, as.character(cur_group_id())),
              available_well = TRUE) |>
+      arrange(primer) |> 
+      nest()
+    
+    primer_names <- primer_names()
+    length(primer_names) <- nrow(plate)
+    
+    plate <- plate |> 
       ungroup() |> 
+      mutate(primer_name = primer_names) |> 
+      unnest(cols = c(data)) |> 
       arrange(primer) |> 
       mutate(sample = sample, 
              sample_color = sample_color) |> 
@@ -180,51 +206,50 @@ server <- function(input, output) {
            vol = c(6.25, .625, .5, 3.125) * (n_samples() + ntc + 2) * reps)
   })
   
-  # Data Accessors -------------------------------------------------------------
-  ## Get number of samples -----------------------------------------------------
+  # DATA ACCESSORS ~~~~~~~~~~~~~~~~~~~~-----------------------------------------
+  # n_samples ------------------------------------------------------------------
   n_samples <- reactive({
     nrow(rna())
   })
   
-  
-  ## Get (useable) dimension of plate ------------------------------------------
+  # Usable plate dims ----------------------------------------------------------
   # If the border is excluded, it will not be counted
   
-  ### cols ---------------------------------------------------------------------
+  ## n_plate_cols --------------------------------------------------------------
   n_plate_cols <- reactive({
     plate <- plate_init()
     length(unique(plate$col))
   })
   
   
-  ### rows ---------------------------------------------------------------------
+  ## n_plate_rows --------------------------------------------------------------
   n_plate_rows <- reactive({
     plate <- plate_init()
     length(unique(plate$row))
   })
   
-  ## Get sections size ---------------------------------------------------------
-  section_size <- reactive({
+  # section_area ---------------------------------------------------------------
+  section_area <- reactive({
     reps * (n_samples() + ntc)
   })
   
-  ## Get max # sections --------------------------------------------
-  ### ...before flow -----------------------------------------------------------
+  # Max # sections -------------------------------------------------------------
+  ## ...before flow -----------------------------------------------------------
   max_sections_before_flow <- reactive({
     max_wide <- n_plate_cols() %/% reps
     max_tall <- n_plate_rows() %/% (n_samples() + ntc)
     max_wide * max_tall
   })
   
-  ### ...after flow ------------------------------------------------------------
+  ## ...after flow ------------------------------------------------------------
   max_sections_after_flow <- reactive({
     max_wide <- n_plate_cols() %/% reps
     (max_wide * n_plate_rows()) %/% (n_samples() + ntc)
   })
   
-  ### ...theoretically possible ------------------------------------------------
+  ## ...theoretically possible ------------------------------------------------
   max_sections_theoretical <- reactive({
-    (n_plate_rows() * n_plate_cols()) %/% section_size()
+    (n_plate_rows() * n_plate_cols()) %/% section_area()
   })
   
   # Checks ---------------------------------------------------------------------
@@ -256,7 +281,7 @@ server <- function(input, output) {
     x$dilution_factor
   })
   
-  # OUTPUTS~~~~~~~~~~~~~~~~~~~~~~~~~~-------------------------------------------
+  # OUTPUTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~-----------------------------------------
   
   # Sample Preparation ---------------------------------------------------------
   sample_prep <- reactive({
@@ -293,8 +318,9 @@ server <- function(input, output) {
     
     plate <- if(should_flow()) plate_flow() else plate_section()
     
-    ggplot(plate, aes(x = col, y = row, color = primer, label = sample)) + 
+    ggplot(plate, aes(x = col, y = row, color = primer, label = primer_name)) + 
       geom_point(size = size) + 
+      geom_text(color = "black", na.rm = TRUE) + 
       theme(legend.position = "none", plot.background = element_blank())
   }, width = 800, height = 500)
 
@@ -344,8 +370,5 @@ server <- function(input, output) {
   # Integration with Plate? Allow for a late with specific layers to be loaded in, autocalculation?
   
   # Give primers names like samples
-  
-  # Odd sample-exclusive error:
-  # 2 samples (3 w ntc), 384, no plate border, >=10primers
   
 }
