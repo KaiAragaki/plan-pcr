@@ -5,7 +5,7 @@
 First, go to the [shiny app webpage](https://kai-a.shinyapps.io/plan-pcr/) for plan-pcr.
 
 Next, upload a dataset: 
-* The dataset should be a `.tsv` file. 
+* The dataset should be a `.tsv`, `.csv`, or `.xls(x)` file. 
 * If there is one column of data, it is assumed to be RNA concentrations. 
 * If there are 2+ columns, the first is assumed to be the sample names, the second is assumed to be RNA concentrations.
 * The file is assumed to have column names
