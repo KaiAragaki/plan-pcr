@@ -99,7 +99,7 @@ server <- function(input, output) {
     sample_names <- c(rna()$names, "NTC")
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
-    sample_color <- rep(sample_names, each = 3) |> rep(times = input$primers)
+    sample_color <- rep(sample_names, each = 3) |> c() |>  rep(times = input$primers)
     length(primer) <- nrow(plate_vlane())
     length(sample) <- nrow(plate_vlane())
     length(sample_color) <- nrow(plate_vlane())
@@ -139,10 +139,10 @@ server <- function(input, output) {
     sample_names <- c(rna()$names, "NTC")
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
-    sample_color <- rep(sample_names, each = 3) |> rep(times = input$primers)
+    sample_color <- rep(sample_names, each = 3) |> c() |> rep(times = input$primers)
     length(sample) <- nrow(plate_vlane())
     length(sample_color) <- nrow(plate_vlane())
-    plate_hlane() |> 
+    plate <- plate_hlane() |> 
       arrange(lane_h, lane_v) |> 
       rowwise() |> 
       mutate(primer = if_else(is.na(lane_h) || is.na(lane_v), 
@@ -152,9 +152,11 @@ server <- function(input, output) {
       mutate(primer = if_else(cur_group_id() > input$primers, NA_character_, as.character(cur_group_id())),
              available_well = TRUE) |>
       ungroup() |> 
+      arrange(primer) |> 
       mutate(sample = sample, 
              sample_color = sample_color) |> 
       right_join(full_plate, by = c("col", "row"))
+    plate
   })
   
   
@@ -254,8 +256,10 @@ server <- function(input, output) {
     x$dilution_factor
   })
   
-  # Make RNA Table -------------------------------------------------------------
-  rna_table <- reactive({
+  # OUTPUTS~~~~~~~~~~~~~~~~~~~~~~~~~~-------------------------------------------
+  
+  # Sample Preparation ---------------------------------------------------------
+  sample_prep <- reactive({
     req(input$primers)
     rna() |> 
       mutate(dilution_factor = rna_dil_factor(),
@@ -265,11 +269,16 @@ server <- function(input, output) {
              water_to_add = final_vol - diluted_rna_to_add)
   })
   
-  output$rna_table <- renderTable({
-    rna_table()
+  output$sample_prep <- renderTable({
+    sample_prep()
   })
   
-  # Make Mastermix Layout ------------------------------------------------------
+  # Mastermix Preparation ------------------------------------------------------
+  output$mm_prep <- renderTable(
+    mm()
+  )
+  
+  # Mastermix Layout -----------------------------------------------------------
   output$mm_layout <- renderPlot({
     req(input$rna_data)
     req(input$primers)
@@ -288,9 +297,8 @@ server <- function(input, output) {
       geom_point(size = size) + 
       theme(legend.position = "none", plot.background = element_blank())
   }, width = 800, height = 500)
-  
-  
-  # Make Sample Layout ---------------------------------------------------------
+
+  # Sample Layout --------------------------------------------------------------
   output$sample_layout <- renderPlot({
     req(input$rna_data)
     req(input$primers)
@@ -298,23 +306,22 @@ server <- function(input, output) {
     if(input$plate_format == "96_well") {
       full_plate <- plate_96
       size = 24
+      size_text = 8
     } else {
       full_plate <- plate_384
       size = 12
+      size_text = 6
     }
     
     plate <- if(should_flow()) plate_flow() else plate_section()
     
     ggplot(plate, aes(x = col, y = row, color = sample_color, label = sample)) + 
       geom_point(size = size) + 
-      geom_text(color = "black", size = 8) +
+      geom_text(color = "black", size = size_text, na.rm = TRUE) +
       theme(legend.position = "none", plot.background = element_blank())
   }, width = 800, height = 500) 
   
-  # Make Mastermix Preparation Table -------------------------------------------
-  output$mm_prep <- renderTable(
-    mm()
-  )
+
   
   # Should eventually find a way to preserve given names in df
   
