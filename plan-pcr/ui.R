@@ -6,6 +6,7 @@ ui <- fluidPage(
     sidebarPanel(
       fileInput("rna_data",
                 "Upload RNA Concentrations",
+                accept = c(".csv", ".tsv", ".xls", ".xlsx"),
                 width = 250),
       numericInput("primers",
                   "Number of Primers:",
@@ -21,7 +22,10 @@ ui <- fluidPage(
                    "Exclude Plate Border?",
                    c("Yes" = TRUE, "No" = FALSE), 
                    selected = TRUE),
-      textInput("primer_names", "Primer Names (optional)", placeholder = "Primer 1; Primer 2..."),
+      textInput("primer_names", 
+                "Primer Names (optional)", 
+                placeholder = "Primer 1; Primer 2...",
+                width = 250),
       downloadButton("report",
                      "Download Report")
     ),
