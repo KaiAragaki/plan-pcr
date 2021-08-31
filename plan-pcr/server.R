@@ -44,6 +44,10 @@ server <- function(input, output) {
   plate_96 <- plate_template(8, 12)
   plate_384 <- plate_template(16, 24)
   
+  full_plate <- reactive({
+    if(input$plate_format == "96_well") plate_96 else plate_384
+  })
+  
   
   ### Borderless plates ---------------------------------------------------------
   
@@ -93,7 +97,7 @@ server <- function(input, output) {
   plate_vlane <- reactive({
     num_lanes <- n_plate_cols() %/% reps
     wells_per_lane <- n_plate_rows() * reps
-    lane <- rep(1:num_lanes, each = wells_per_lane) |> as.factor()
+    lane <- rep(1:num_lanes, each = wells_per_lane)
     length(lane) <- nrow(plate_init())
     arrange(plate_init(), col, desc(row)) |> 
       mutate(lane_v = lane)
@@ -102,11 +106,6 @@ server <- function(input, output) {
   
   ### Flowing lanes ------------------------------------------------------------
   plate_flow <- reactive({
-    if(input$plate_format == "96_well") {
-      full_plate <- plate_96
-    } else {
-      full_plate <- plate_384
-    }
     primer <- rep(1:input$primers, each = (n_samples() + ntc) * reps)
     primer_names <- rbind(NA, primer_names(), matrix(nrow = (n_samples() + ntc) * reps - 2, ncol = input$primers)) |> c()
     sample_names <- c(rna()$names, "NTC")
@@ -126,7 +125,7 @@ server <- function(input, output) {
       arrange(primer) |> 
       mutate(sample = sample,
              sample_color = sample_color) |> 
-      right_join(full_plate, by = c("col", "row"))
+      right_join(full_plate(), by = c("col", "row"))
     plate
   })
   
@@ -137,52 +136,52 @@ server <- function(input, output) {
   plate_hlane <- reactive({
     num_lanes <- n_plate_rows() %/% (n_samples() + ntc)
     wells_per_lane <- n_plate_cols() * (n_samples() + ntc)
-    lane <- rep(1:num_lanes, each = wells_per_lane) |> as.factor()
+    lane <- rep(1:num_lanes, each = wells_per_lane)
     length(lane) <- nrow(plate_vlane())
     arrange(plate_vlane(), desc(row), col) |> 
       mutate(lane_h = lane)
   })
   
   
-  ## Make sections -------------------------------------------------------------
+  ### Make sections -------------------------------------------------------------
   # Sections are the checkerboard-like patterns made by the grid of lanes
   plate_section <- reactive({
-    if(input$plate_format == "96_well") {
-      full_plate <- plate_96
-    } else {
-      full_plate <- plate_384
-    }
-    primer_names <- primer_names()
+    primer_names <- rbind(NA, primer_names(), matrix(nrow = (n_samples() + ntc) * reps - 2, ncol = input$primers)) |> c()
     sample_names <- c(rna()$names, "NTC")
+    
+
     blanks <- rep(NA, times = n_samples() + ntc)
     sample <- rbind(blanks, sample_names, blanks) |> c() |> rep(times = input$primers)
     sample_color <- rep(sample_names, each = 3) |> c() |> rep(times = input$primers)
     length(sample) <- nrow(plate_vlane())
     length(sample_color) <- nrow(plate_vlane())
+    length(primer_names) <- nrow(plate_vlane())
     plate <- plate_hlane() |> 
       arrange(lane_h, lane_v) |> 
       rowwise() |> 
       mutate(primer = if_else(is.na(lane_h) || is.na(lane_v), 
-                              NA_character_, 
-                              paste0(lane_h, ", ", lane_v))) |> 
+                              NA_real_, 
+                              lane_h * 100 + lane_v)) |> 
+      arrange(primer) |> 
       group_by(primer) |> 
       mutate(primer = if_else(cur_group_id() > input$primers, NA_character_, as.character(cur_group_id())),
              available_well = TRUE) |>
-      arrange(primer) |> 
-      nest()
-    
-    primer_names <- primer_names()
-    length(primer_names) <- nrow(plate)
-    
+      ungroup()
+
     plate <- plate |> 
-      ungroup() |> 
       mutate(primer_name = primer_names) |> 
-      unnest(cols = c(data)) |> 
       arrange(primer) |> 
       mutate(sample = sample, 
              sample_color = sample_color) |> 
-      right_join(full_plate, by = c("col", "row"))
+      right_join(full_plate(), by = c("col", "row"))
     plate
+  })
+  
+  
+  ## Finalize Plate ------------------------------------------------------------
+  
+  plate <- reactive({
+    if(should_flow()) plate_flow() else plate_section()
   })
   
   
@@ -309,18 +308,16 @@ server <- function(input, output) {
     req(input$primers)
     is_over()
     if(input$plate_format == "96_well") {
-      full_plate <- plate_96
       size = 24
+      size_text = 8
     } else {
-      full_plate <- plate_384
       size = 12
+      size_text = 6
     }
-    
-    plate <- if(should_flow()) plate_flow() else plate_section()
-    
-    ggplot(plate, aes(x = col, y = row, color = primer, label = primer_name)) + 
+
+    ggplot(plate(), aes(x = col, y = row, color = primer, label = primer_name)) + 
       geom_point(size = size) + 
-      geom_text(color = "black", na.rm = TRUE) + 
+      geom_text(color = "black", size = size_text, na.rm = TRUE) + 
       theme(legend.position = "none", plot.background = element_blank())
   }, width = 800, height = 500)
 
@@ -330,21 +327,18 @@ server <- function(input, output) {
     req(input$primers)
     is_over()
     if(input$plate_format == "96_well") {
-      full_plate <- plate_96
       size = 24
       size_text = 8
     } else {
-      full_plate <- plate_384
       size = 12
       size_text = 6
     }
-    
-    plate <- if(should_flow()) plate_flow() else plate_section()
-    
-    ggplot(plate, aes(x = col, y = row, color = sample_color, label = sample)) + 
+
+    ggplot(plate(), aes(x = col, y = row, color = sample_color, label = sample)) + 
       geom_point(size = size) + 
       geom_text(color = "black", size = size_text, na.rm = TRUE) +
       theme(legend.position = "none", plot.background = element_blank())
+    
   }, width = 800, height = 500) 
   
 
@@ -354,21 +348,19 @@ server <- function(input, output) {
   # Might be as simple/rudimentary as just caching the names and resetting them
   # at the end
   
-  # Primer name input too
-  # Be easy with primer naming. If too many primer names supplied, trim off the end
-  # If too few, fill out the rest with dummy names.
   
-  # Weird one that works but shouldn't:
-  # 1 sample (2 with ntc), 10 primers, 96 well, no border
+  # If too many primer names supplied, trim off the end
+  
   
   # Clean up code after going through all that drama
   
+  
   # Truncate sample names that are too long for plot (stringr)
+  
   
   # Cycle through color limited distinct colors
   
+  
   # Integration with Plate? Allow for a late with specific layers to be loaded in, autocalculation?
   
-  # Give primers names like samples
-  
-}
+  }
