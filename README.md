@@ -18,6 +18,6 @@ Adjust the parameters as your experiment requires. Typically, excecution of the 
 - [ ] Report generation
 - [ ] Deal with long sample/primer names more gracefully (likely trucation or excision using `stringr`)
 - [ ] Better aesthetics
-- [ ] Code refactoring
+- [x] Code refactoring
 - [ ] More distinct colors, particularly when the number of primers get very high (low priority)
 
