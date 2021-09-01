@@ -51,26 +51,30 @@ section_lanes <- function(plate, n_primers) {
                             NA_integer_),
            available_well = TRUE) |>
     ungroup()
-  str(plate)
-  plate
 }
-
 
 
 ## Add names to lanes...
 add_sample_names <- function(plate, sample_names) {
-  sample_names <- c(sample_names, "NTC")
-  plate |>
+
+  plate <- plate |>
     group_by(primer) |>
-    mutate(sample = (row_number() + 2) %/% reps) |> 
+    mutate(sample = (row_number() + 2) %/% reps,
+           sample = if_else(!is.na(primer), sample, NA_real_)) |> 
     group_by(sample) |>
     nest() |> 
-    ungroup() |> 
+    ungroup()
+
+  sample_names <- c(sample_names, "NTC")
+  length(sample_names) <- nrow(plate)
+
+  plate |> 
     mutate(sample_name = sample_names) |>
     unnest(cols = data) |>
     group_by(sample, primer) |>
     arrange(desc(row), col) |>
-    mutate(sample_name = if_else(!is.na(primer) & row_number() == 2, sample_name, NA_character_))
+    mutate(sample_name = if_else(!is.na(primer) & row_number() == 2, sample_name, NA_character_),
+           sample = as.factor(sample))
 }
 
 add_primer_names <- function(plate, primer_names) {
@@ -86,6 +90,7 @@ add_primer_names <- function(plate, primer_names) {
     mutate(primer_name = primer_names) |>
     unnest(cols = data) |>
     group_by(primer) |> 
-    arrange(desc(row), col) |>
-    mutate(primer_name = if_else(row_number() == 2, primer_name, NA_character_))
+    arrange(lane_v, desc(row), col) |>
+    mutate(primer_name = if_else(row_number() == 2, primer_name, NA_character_),
+           primer = as.factor(primer))
 }

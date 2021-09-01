@@ -8,7 +8,7 @@ source("denote_lane.R")
 
 
 server <- function(input, output) {
-
+  
   # Final RNA volume per sample
   final_vol <- reactive({
     (n_primers()*reps + safety_reps) * rna_per_well |> 
@@ -71,7 +71,7 @@ server <- function(input, output) {
   plate_flow <- reactive({
     flow_lanes(plate_vlane(), n_primers(), n_samples())
   })
- 
+  
   ### Section lanes ------------------------------------------------------------
   plate_sect <- reactive({
     section_lanes(plate_hlane(), n_primers())
@@ -94,9 +94,9 @@ server <- function(input, output) {
   plate_pn <- reactive({
     add_primer_names(plate_sn(), primer_names())
   })
-   
+  
   plate_final <- reactive({
-      right_join(plate_pn(), full_plate(), by = c("col", "row"))
+    right_join(plate_pn(), full_plate(), by = c("col", "row"))
   })
   
   # Read in Data ---------------------------------------------------------------
@@ -255,29 +255,24 @@ server <- function(input, output) {
       geom_text(color = "black", size = size_text(), na.rm = TRUE) + 
       theme(legend.position = "none", plot.background = element_blank())
   }, width = 800, height = 500)
-
+  
   # Sample Layout --------------------------------------------------------------
   output$sample_layout <- renderPlot({
     req(input$rna_data)
     req(input$primers)
     is_over()
-
-    ggplot(plate(), aes(x = col, y = row, color = sample_color, label = sample)) + 
+    ggplot(plate_final(), aes(x = col, y = row, color = sample, label = sample_name)) + 
       geom_point(size = size()) + 
       geom_text(color = "black", size = size_text(), na.rm = TRUE) +
       theme(legend.position = "none", plot.background = element_blank())
     
   }, width = 800, height = 500) 
   
-
   
   # Should eventually find a way to preserve given names in df
   
   # Might be as simple/rudimentary as just caching the names and resetting them
   # at the end
-
-  
-  # Clean up code after going through all that drama
   
   
   # Truncate sample names that are too long for plot (stringr)
@@ -291,4 +286,4 @@ server <- function(input, output) {
   
   # Report generation and download
   
-  }
+}
