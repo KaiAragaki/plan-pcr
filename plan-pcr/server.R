@@ -190,7 +190,6 @@ server <- function(input, output) {
   # Read in Data ---------------------------------------------------------------
   rna <- reactive({
     ext <- tools::file_ext(input$rna_data$datapath)
-    print(ext)
     req(input$rna_data)
     validate(need(ext %in% c("tsv", "csv", "xls", "xlsx"), "Only .tsv, .csv, .xls(x) files supported"))
     if (ext == "tsv"){
