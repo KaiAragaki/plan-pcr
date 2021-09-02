@@ -13,7 +13,7 @@ This sucks for a few reasons:
 3. Multiple files are harder to manage
 4. Pen and paper is difficult to manage - it's unsearchable, and it's difficult to link to digital documents (if it even gets saved)
 
-This process almost always requires no creativity, and therefore can be solved algorithmically, freeing our brains to work on more stimulated things.
+This process almost always requires no creativity, and therefore can be solved algorithmically, freeing our brains to work on more stimulating things.
 
 # Description
 
