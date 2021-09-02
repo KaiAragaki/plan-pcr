@@ -43,8 +43,3 @@ ui <- fluidPage(
     )
   )
 )
-# Need to validate file ext (allow for tsv, csv, excel files)
-# See https://shiny.rstudio.com/reference/shiny/latest/fileInput.html
-
-# Allow user to supply code to select which samples they want? Security risk?
-# Maybe just allow for a simple click to select?

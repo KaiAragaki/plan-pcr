@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Slab&display=swap')
 
+::placeholder
+  color: white
+
+%active-tab
+  background-color: #FFD447
+  color: #000
+  border-style: none
+  transition: background-color .3s
+  
+%inactive-tab
+  background-color: #002082
+  color: #FFF
+  border-style: none
+  transition: background-color .3s
+
 $slab-stack: 'Roboto Slab', serif
 
 body 
@@ -21,43 +36,53 @@ h2
 .form-control
   border-radius: 0
 
-.nav > li[class=active] > a 
+.nav > li > a
+  @extend %inactive-tab
+  &:active
+    @extend %inactive-tab
+  &:focus
+    @extend %inactive-tab
+  &:hover
+    @extend %inactive-tab
+    background-color: #000A29
+
+.nav > li[class=active] > a
+  @extend %active-tab
+  &:active
+    @extend %active-tab
+  &:focus
+    @extend %active-tab
+  &:hover
+    @extend %active-tab
+
+
+.btn-file
   background-color: #FFD447
-  color: #000
-  border-style: none
-
-.nav > li[class=active] > a:focus 
+  font-weight: bold
+  color: #291F00
+  border-style: 1px solid #FFD447
+  
+.btn-default
   background-color: #FFD447
-  color: #000
+  font-weight: bold
+  color: #291F00
+  border-style: 1px solid #FFD447
+
+.form-control[readonly]
+  border-radius: 0 5px 5px 0
+  background-color: #F5B800
+  font-weight: bold
   border-style: none
-
-
-.nav > li[class=active] > a:hover
+  
+  &::placeholder
+    color: #A37A00
+  
+.form-control
   background-color: #FFD447
-  color: #000
+  font-weight: bold
+  color: #291F00
+  border-radius: 5px
   border-style: none
-
-
-.nav > li > a 
-  background-color: #002082
-  color: #FFF
-  border-style: none
-
-
-.nav > li > a:active 
-  background-color: #002082
-  color: #FFF
-  border-style: none
-
-
-.nav > li > a:focus 
-  background-color: #002082
-  color: #FFF
-  border-style: none
-
-
-.nav > li > a:hover 
-  background-color: #002082
-  color: #FFF
-  border-style: none
+  &::placeholder
+    color: #CC9C00
 
