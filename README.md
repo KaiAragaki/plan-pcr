@@ -1,4 +1,4 @@
-# plan-pcr
+# plan-pcr <img src='plan-pcr.png' align="right" height="138" />
 
 # Usage
 
