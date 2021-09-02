@@ -3,6 +3,7 @@ library(tidyverse)
 library(readr)
 library(readxl)
 library(sass)
+library(gt)
 source("constants.R")
 source("utils.R")
 source("denote_lane.R")
@@ -220,16 +221,80 @@ server <- function(input, output) {
              diluted_concentration = conc/dilution_factor,
              final_vol = final_vol(),
              diluted_rna_to_add = final_rna_conc * final_vol / diluted_concentration,
-             water_to_add = final_vol - diluted_rna_to_add)
+             water_to_add = final_vol - diluted_rna_to_add) |> 
+      relocate(final_vol, .after = last_col()) |> 
+      gt() |> 
+      fmt_number(
+        c("diluted_rna_to_add", "water_to_add")
+      ) |> 
+      cols_label(
+        names = "Sample",
+        conc = "[RNA]",
+        dilution_factor = "Dil. Factor",
+        diluted_concentration = "Dil. [RNA] ",
+        diluted_rna_to_add = "Vol. dil. [RNA]",
+        water_to_add = "Vol. H2O",
+        final_vol = "Vol. final (uL)"
+      ) |> 
+      tab_style(
+        style = list(
+          cell_fill(color = "#1F46D6"),
+          cell_text(color = "#FFFFFF"),
+          cell_borders(color = "#3057E1")
+        ),
+        locations = cells_body()
+      ) |>  
+      tab_style(
+        style = list(
+          cell_fill(color = "#1735A1"),
+          cell_text(weight = "bold", color = "#FFFFFF"),
+          cell_borders(color = "#3057E1")
+        ),
+        locations = cells_column_labels()
+      ) |> 
+      tab_options(table.align = "left") |> 
+      tab_options(
+        column_labels.border.bottom.color = "#1735A1"
+      ) |> 
+      opt_table_outline(color = "#1735A1")
   })
   
-  output$sample_prep <- renderTable({
+  output$sample_prep <- render_gt({
     sample_prep()
   })
   
   # Mastermix Preparation ------------------------------------------------------
-  output$mm_prep <- renderTable(
-    mm()
+  output$mm_prep <- render_gt(
+    mm() |> 
+      gt() |> 
+      fmt_number(
+        c("vol")
+      ) |> 
+      cols_label(
+        reagent = "Reagent",
+        vol = "Volume (uL)"
+      ) |> 
+      tab_style(
+        style = list(
+          cell_fill(color = "#1F46D6"),
+          cell_text(color = "#FFFFFF"),
+          cell_borders(color = "#3057E1")
+        ),
+        locations = cells_body()
+      ) |>  
+      tab_style(
+        style = list(
+          cell_fill(color = "#1735A1"),
+          cell_text(weight = "bold", color = "#FFFFFF"),
+          cell_borders(color = "#3057E1")
+        ),
+        locations = cells_column_labels()
+      ) |> 
+      tab_options(table.align = "left") |> 
+      tab_options(
+        column_labels.border.bottom.color = "#1735A1"
+      ) |> 
+      opt_table_outline(color = "#1735A1")
   )
   
   # Mastermix Layout -----------------------------------------------------------

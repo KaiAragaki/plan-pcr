@@ -1,4 +1,5 @@
 library(sass)
+library(gt)
 css <- sass(sass_file("./www/style.sass"))
 ui <- fluidPage(
 
@@ -35,8 +36,8 @@ ui <- fluidPage(
     ),
     mainPanel(
       tabsetPanel(
-        tabPanel("Sample Preparation", tableOutput("sample_prep")),
-        tabPanel("Mastermix Preparation", tableOutput("mm_prep")),
+        tabPanel("Sample Preparation", p(), gt_output("sample_prep")),
+        tabPanel("Mastermix Preparation", p(), gt_output("mm_prep")),
         tabPanel("Mastermix Layout", plotOutput("mm_layout")),
         tabPanel("Sample Layout", plotOutput("sample_layout"))
       )
