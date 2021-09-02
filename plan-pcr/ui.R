@@ -1,4 +1,8 @@
+library(sass)
+css <- sass(sass_file("./www/style.sass"))
 ui <- fluidPage(
+
+  tags$head(tags$style(css)),
   shinyFeedback::useShinyFeedback(),
   titlePanel("PCR Experiment Planning"),
   
