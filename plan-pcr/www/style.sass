@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Slab&display=swap')
 
+$slab-stack: 'Roboto Slab', serif
+$main-blue: #2C5295
+$dark-blue: #1C345F
+$ultradark-blue: #09111F
+
 ::placeholder
   color: white
 
@@ -10,15 +15,13 @@
   transition: background-color .3s
   
 %inactive-tab
-  background-color: #002082
+  background-color: $dark-blue
   color: #FFF
   border-style: none
   transition: background-color .3s
 
-$slab-stack: 'Roboto Slab', serif
-
 body 
-  background-color: #3057E1
+  background-color: $main-blue
   color: #FFF
   border-style: none
 
@@ -28,7 +31,7 @@ h2
 
 .well 
   border-radius: 0
-  background-color: #002082
+  background-color: $dark-blue
   color: #FFF
   font-family: $slab-stack
   border-style: none
@@ -87,4 +90,4 @@ h2
     color: #CC9C00
 
 .nav-tabs
-  border-bottom: 1px solid #002082
+  border-bottom: 1px solid $dark-blue
