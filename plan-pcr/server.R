@@ -264,7 +264,7 @@ server <- function(input, output) {
   })
   
   # Mastermix Preparation ------------------------------------------------------
-  output$mm_prep <- render_gt(
+  mm_prep <- reactive({
     mm() |> 
       gt() |> 
       fmt_number(
@@ -295,7 +295,11 @@ server <- function(input, output) {
         column_labels.border.bottom.color = "#1735A1"
       ) |> 
       opt_table_outline(color = "#1735A1")
-  )
+  })
+  
+  output$mm_prep <- render_gt({
+    mm_prep()
+  })
   
   # Mastermix Layout -----------------------------------------------------------
   
@@ -312,7 +316,7 @@ server <- function(input, output) {
     }
   })
   
-  output$mm_layout <- renderPlot({
+  mm_layout <- reactive({
     req(input$rna_data)
     req(input$primers)
     is_over()
@@ -320,10 +324,15 @@ server <- function(input, output) {
       geom_point(size = size()) + 
       geom_text(color = "black", size = size_text(), na.rm = TRUE) + 
       theme(legend.position = "none", plot.background = element_blank())
+  })
+  
+  output$mm_layout <- renderPlot({
+    mm_layout()  
   }, width = 800, height = 500)
   
   # Sample Layout --------------------------------------------------------------
-  output$sample_layout <- renderPlot({
+  
+  sample_layout <- reactive({
     req(input$rna_data)
     req(input$primers)
     is_over()
@@ -331,7 +340,10 @@ server <- function(input, output) {
       geom_point(size = size()) + 
       geom_text(color = "black", size = size_text(), na.rm = TRUE) +
       theme(legend.position = "none", plot.background = element_blank())
-    
+  })
+  
+  output$sample_layout <- renderPlot({
+    sample_layout()
   }, width = 800, height = 500) 
   
   
@@ -352,4 +364,36 @@ server <- function(input, output) {
   
   # Report generation and download
   
+  make_filename <- reactive({
+    file_name <- input$rna_data$name |> 
+      str_replace( "\\..*$", "_report.html")
+  })
+  
+  output$get_report <- downloadHandler(
+    filename = function(){
+      make_filename()
+    },
+    content = function(file) {
+      temp_report = file.path("report_template.Rmd")
+      params = list(file = input$rna_data,
+                    sample_prep = sample_prep(),
+                    mm_prep = mm_prep(),
+                    mm_layout = mm_layout(),
+                    sample_layout = sample_layout(),
+                    primer_number = input$primers,
+                    primer_names = input$primer_names,
+                    plate_format = input$plate_format,
+                    exclude_border = input$exclude_border)
+      rmarkdown::render(temp_report, output_file = file, 
+                        params = params, envir = new.env(parent = globalenv()))
+    })
 }
+# file: NA
+# sample_prep: NA
+# mm_prep: NA
+# mm_layout: NA
+# sample_layout: NA
+# primer_number: NA
+# primer_names: NA
+# plate_format: NA
+# exclude_border: NA

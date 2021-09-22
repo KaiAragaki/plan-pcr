@@ -31,7 +31,7 @@ ui <- fluidPage(
                 "Primer Names (optional)", 
                 placeholder = "Primer 1; Primer 2...",
                 width = 250),
-      downloadButton("report",
+      downloadButton("get_report",
                      "Download Report")
     ),
     mainPanel(
