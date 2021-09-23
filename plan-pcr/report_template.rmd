@@ -1,0 +1,43 @@
+---
+title: "Plan PCR Report"
+output: html_document
+params:
+        file: NA
+        sample_prep: NA
+        mm_prep: NA
+        mm_layout: NA
+        sample_layout: NA
+        primer_number: NA
+        primer_names: NA
+        plate_format: NA
+        exclude_border: NA
+---
+
+# Analysis Parameters
+   
+- **Date:**              `r Sys.Date()`
+- **File Name:**         `r params$file$name`
+- **Number of Primers:** `r params$primer_number`
+- **Primer Names:**      `r params$primer_names`
+- **Plate Format:**      `r params$plate_format`
+- **Exclude Border?**    `r params$exclude_border`
+
+# Sample Preparation
+```{r echo = F}
+params$sample_prep
+```
+
+# Mastermix Preparation
+```{r echo = F}
+params$mm_prep
+```
+
+# Mastermix Layout
+```{r echo = F, fig.width=10, fig.height=7, out.width="100%"}
+params$mm_layout
+```
+
+# Sample Layout
+```{r echo = F, fig.width=10, fig.height=7, out.width="100%"}
+params$sample_layout
+```
