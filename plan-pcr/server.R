@@ -368,7 +368,7 @@ server <- function(input, output) {
       make_filename()
     },
     content = function(file) {
-      temp_report = file.path("report_template.Rmd")
+      temp_report = file.path("report_template.rmd")
       params = list(file = input$rna_data,
                     sample_prep = sample_prep(),
                     mm_prep = mm_prep(),
