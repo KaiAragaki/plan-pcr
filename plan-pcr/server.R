@@ -238,25 +238,25 @@ server <- function(input, output) {
       ) |> 
       tab_style(
         style = list(
-          cell_fill(color = "#1F46D6"),
+          cell_fill(color = "#2C5295"),
           cell_text(color = "#FFFFFF"),
-          cell_borders(color = "#3057E1")
+          cell_borders(color = "#1C345F")
         ),
         locations = cells_body()
       ) |>  
       tab_style(
         style = list(
-          cell_fill(color = "#1735A1"),
+          cell_fill(color = "#1C345F"),
           cell_text(weight = "bold", color = "#FFFFFF"),
-          cell_borders(color = "#3057E1")
+          cell_borders(color = "#1C345F")
         ),
         locations = cells_column_labels()
       ) |> 
       tab_options(table.align = "left") |> 
       tab_options(
-        column_labels.border.bottom.color = "#1735A1"
+        column_labels.border.bottom.color = "#1C345F"
       ) |> 
-      opt_table_outline(color = "#1735A1")
+      opt_table_outline(color = "#1C345F")
   })
   
   output$sample_prep <- render_gt({
@@ -276,25 +276,25 @@ server <- function(input, output) {
       ) |> 
       tab_style(
         style = list(
-          cell_fill(color = "#1F46D6"),
+          cell_fill(color = "#2C5295"),
           cell_text(color = "#FFFFFF"),
-          cell_borders(color = "#3057E1")
+          cell_borders(color = "#1C345F")
         ),
         locations = cells_body()
       ) |>  
       tab_style(
         style = list(
-          cell_fill(color = "#1735A1"),
+          cell_fill(color = "#1C345F"),
           cell_text(weight = "bold", color = "#FFFFFF"),
-          cell_borders(color = "#3057E1")
+          cell_borders(color = "#1C345F")
         ),
         locations = cells_column_labels()
       ) |> 
       tab_options(table.align = "left") |> 
       tab_options(
-        column_labels.border.bottom.color = "#1735A1"
+        column_labels.border.bottom.color = "#1C345F"
       ) |> 
-      opt_table_outline(color = "#1735A1")
+      opt_table_outline(color = "#1C345F")
   )
   
   # Mastermix Layout -----------------------------------------------------------
