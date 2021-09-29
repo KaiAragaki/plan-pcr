@@ -382,12 +382,3 @@ server <- function(input, output) {
                         params = params, envir = new.env(parent = globalenv()))
     })
 }
-# file: NA
-# sample_prep: NA
-# mm_prep: NA
-# mm_layout: NA
-# sample_layout: NA
-# primer_number: NA
-# primer_names: NA
-# plate_format: NA
-# exclude_border: NA
