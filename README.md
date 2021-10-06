@@ -44,7 +44,7 @@ Adjust the parameters as your experiment requires. Typically, excecution of the 
 # TODO
 
 - [x] Support more file types (.csv, .xls, .xlsx)
-- [ ] Report generation
+- [x] Report generation
 - [ ] Deal with long sample/primer names more gracefully (likely trucation or excision using `stringr`)
 - [x] Better aesthetics
 - [x] Code refactoring
