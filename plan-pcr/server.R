@@ -104,14 +104,18 @@ server <- function(input, output) {
   # Read in Data ---------------------------------------------------------------
   rna <- reactive({
     ext <- tools::file_ext(input$rna_data$datapath)
-    req(input$rna_data)
-    validate(need(ext %in% c("tsv", "csv", "xls", "xlsx"), "Only .tsv, .csv, .xls(x) files supported"))
-    if (ext == "tsv"){
-      x <- read_tsv(input$rna_data$datapath, show_col_types = FALSE)
-    } else if (ext == "csv"){
-      x <- read_csv(input$rna_data$datapath, show_col_types = FALSE)
+    if(!isTruthy(input$rna_data)) {
+      x <- read_tsv("./data/example_samples.tsv")
     } else {
-      x <- read_excel(input$rna_data$datapath)
+      validate(need(ext %in% c("tsv", "csv", "xls", "xlsx"), "Only .tsv, .csv, .xls(x) files supported"))
+      if (ext == "tsv"){
+        x <- read_tsv(input$rna_data$datapath, show_col_types = FALSE)
+      } else if (ext == "csv"){
+        x <- read_csv(input$rna_data$datapath, show_col_types = FALSE)
+      } else {
+        x <- read_excel(input$rna_data$datapath)
+      }
+
     }
     if(ncol(x) == 1) {
       x <- x |> 
@@ -120,6 +124,7 @@ server <- function(input, output) {
     }
     x |> 
       setNames(c("names", "conc"))
+
   })
   
   
@@ -317,7 +322,6 @@ server <- function(input, output) {
   })
   
   mm_layout <- reactive({
-    req(input$rna_data)
     req(input$primers)
     is_over()
     ggplot(plate_final(), aes(x = col, y = row, color = primer, label = primer_name)) + 
@@ -333,7 +337,6 @@ server <- function(input, output) {
   # Sample Layout --------------------------------------------------------------
   
   sample_layout <- reactive({
-    req(input$rna_data)
     req(input$primers)
     is_over()
     ggplot(plate_final(), aes(x = col, y = row, color = sample, label = sample_name)) + 
@@ -359,8 +362,13 @@ server <- function(input, output) {
   # in, autocalculation?
   
   make_filename <- reactive({
-    file_name <- input$rna_data$name |> 
-      str_replace( "\\..*$", "_report.html")
+    if(isTruthy(input$rna_date$name)){
+      file_name <- input$rna_data$name |> 
+        str_replace( "\\..*$", "_report.html")
+    } else(
+      file_name <- "example_report.html"
+    )
+
   })
   
   output$get_report <- downloadHandler(
