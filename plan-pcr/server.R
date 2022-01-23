@@ -4,6 +4,7 @@ library(readr)
 library(readxl)
 library(sass)
 library(gt)
+library(mop)
 source("constants.R")
 source("utils.R")
 source("denote_lane.R")
@@ -29,6 +30,19 @@ server <- function(input, output) {
     } else {
       if(input$exclude_border) plate_384_nb else plate_384
     }
+  })
+  
+  # Sample Name ----------------------------------------------------------------
+  sample_names <- reactive({
+    sn <- rna()$names
+    if (input$sample_names != "") {
+      user_names <- unlist(strsplit(input$sample_names, split = "; ", ))
+      if (length(user_names) > length(sn)) {
+        user_names <- user_names[1:n_samples()]
+      }
+      sn[1:length(user_names)] <- user_names
+    }
+    sn 
   })
   
   # Primer Names ---------------------------------------------------------------
@@ -111,7 +125,11 @@ server <- function(input, output) {
       if (ext == "tsv"){
         x <- read_tsv(input$rna_data$datapath, show_col_types = FALSE)
       } else if (ext == "csv"){
-        x <- read_csv(input$rna_data$datapath, show_col_types = FALSE)
+        if (guess_encoding(input$rna_data$datapath)$encoding[1] == "UTF-16LE") {
+          x <- read_nanodrop(input$rna_data$datapath) |> tidy_lab() |> scrub() |> select(sample_name, conc)
+        } else {
+          x <- read_csv(input$rna_data$datapath, show_col_types = FALSE)
+        }
       } else {
         x <- read_excel(input$rna_data$datapath)
       }
@@ -124,7 +142,6 @@ server <- function(input, output) {
     }
     x |> 
       setNames(c("names", "conc"))
-
   })
   
   
@@ -174,12 +191,6 @@ server <- function(input, output) {
     (plate_dims()$rows * plate_dims()$cols) %/% section_area()
   })
   
-  # sample_names ---------------------------------------------------------------
-  
-  sample_names <- reactive({
-    rna()$names
-  })
-  
   # Checks ---------------------------------------------------------------------
   
   ## User should include control
@@ -222,7 +233,8 @@ server <- function(input, output) {
   sample_prep <- reactive({
     req(input$primers)
     rna() |> 
-      mutate(dilution_factor = rna_dil_factor(),
+      mutate(names = sample_names(),
+        dilution_factor = rna_dil_factor(),
              diluted_concentration = conc/dilution_factor,
              final_vol = final_vol(),
              diluted_rna_to_add = final_rna_conc * final_vol / diluted_concentration,

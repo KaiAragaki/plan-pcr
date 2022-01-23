@@ -34,6 +34,10 @@ ui <- fluidPage(
                 "Primer Names (optional)", 
                 placeholder = "Primer 1; Primer 2...",
                 width = 250),
+      textInput("sample_names", 
+                "Sample Names (optional)", 
+                placeholder = "Sample 1; Sample 2...",
+                width = 250),
       p("The report will include all plots and tables listed here, plus the options set above."),
       downloadButton("get_report",
                      "Download Report")
