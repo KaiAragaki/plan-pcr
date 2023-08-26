@@ -126,7 +126,14 @@ server <- function(input, output) {
         x <- read_tsv(input$rna_data$datapath, show_col_types = FALSE)
       } else if (ext == "csv"){
         if (guess_encoding(input$rna_data$datapath)$encoding[1] == "UTF-16LE") {
-          x <- read_nanodrop(input$rna_data$datapath) |> tidy_lab() |> scrub() |> select(sample_name, conc)
+          x <- read_nanodrop(input$rna_data$datapath) |> tidy_lab() |> scrub()
+          if (input$use_adj_conc) {
+            x <- mutate(
+              x,
+              conc = if_else(is.na(corrected_ngul), conc, corrected_ngul)
+            )
+          }
+          x <- select(x, sample_name, conc)
         } else {
           x <- read_csv(input$rna_data$datapath, show_col_types = FALSE)
         }
